@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Sentiment Dashboard</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header h1 {
+            color: #333;
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            color: #666;
+            font-size: 1.2em;
+            margin: 10px 0 0 0;
+        }
+        .test-area {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            margin: 10px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .stat-card.total { border-top: 4px solid #667eea; }
+        .stat-card.positive { border-top: 4px solid #10b981; }
+        .stat-card.negative { border-top: 4px solid #ef4444; }
+        .stat-card.neutral { border-top: 4px solid #f59e0b; }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .recent-analysis {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .analysis-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ccc;
+        }
+        .positive-item { border-left-color: #10b981; background: #f0fdf4; }
+        .negative-item { border-left-color: #ef4444; background: #fef2f2; }
+        .neutral-item { border-left-color: #f59e0b; background: #fffbeb; }
+        .result-area {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Real-Time Sentiment Dashboard</h1>
+            <p>AI-Powered Sentiment Analysis</p>
+        </div>
+
+        <div class="test-area">
+            <h3>🧪 Test Sentiment Analysis</h3>
+            <textarea id="testText" placeholder="Enter text to analyze sentiment...">I love this amazing technology! It's absolutely fantastic!</textarea>
+            <button onclick="analyzeText()">Analyze Sentiment</button>
+            <div id="testResult" class="result-area"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card total">
+                <h3>Total Analyzed</h3>
+                <div class="stat-number" id="totalCount">0</div>
+            </div>
+            <div class="stat-card positive">
+                <h3>Positive</h3>
+                <div class="stat-number" id="positiveCount">0</div>
+            </div>
+            <div class="stat-card negative">
+                <h3>Negative</h3>
+                <div class="stat-number" id="negativeCount">0</div>
+            </div>
+            <div class="stat-card neutral">
+                <h3>Neutral</h3>
+                <div class="stat-number" id="neutralCount">0</div>
+            </div>
+        </div>
+
+        <div class="recent-analysis">
+            <h3>Recent Analysis</h3>
+            <div id="analysisList">
+                <p>No data yet. Start analyzing text to see results!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Analyze text sentiment
+        async function analyzeText() {
+            const text = document.getElementById('testText').value;
+            const resultDiv = document.getElementById('testResult');
+            
+            if (!text.trim()) {
+                resultDiv.innerHTML = '<p style="color: red;">Please enter some text to analyze.</p>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p>Analyzing sentiment...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const result = await response.json();
+                
+                const sentimentClass = result.sentiment.toLowerCase() + '-item';
+                const emoji = result.sentiment === 'POSITIVE' ? '✅' : 
+                             result.sentiment === 'NEGATIVE' ? '❌' : '⚪';
+                
+                resultDiv.innerHTML = `
+                    <div class="analysis-item ${sentimentClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>${emoji} ${result.sentiment}</strong>
+                            <span style="background: #333; color: white; padding: 2px 8px; border-radius: 12px;">
+                                ${(result.confidence * 100).toFixed(1)}% confidence
+                            </span>
+                        </div>
+                        <p style="margin: 8px 0;"><em>"${result.text}"</em></p>
+                        <small>${new Date(result.timestamp).toLocaleTimeString()}</small>
+                    </div>
+                `;
+
+                // Refresh dashboard
+                updateDashboard();
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Update dashboard with latest data
+        async function updateDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const data = await response.json();
+                
+                // Update stats cards
+                document.getElementById('totalCount').textContent = data.stats.total;
+                document.getElementById('positiveCount').textContent = data.stats.positive;
+                document.getElementById('negativeCount').textContent = data.stats.negative;
+                document.getElementById('neutralCount').textContent = data.stats.neutral;
+                
+                // Update recent analysis list
+                updateAnalysisList(data.data);
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+
+        // Update analysis list
+        function updateAnalysisList(sentimentData) {
+            const listElement = document.getElementById('analysisList');
+            
+            if (sentimentData.length === 0) {
+                listElement.innerHTML = '<p>No data yet. Start analyzing text to see results!</p>';
+                return;
+            }
+
+            const items = sentimentData.slice().reverse().map(item => {
+                const sentimentClass = item.sentiment.toLowerCase() + '-item';
+                const emoji = item.sentiment === 'POSITIVE' ? '✅' : 
+                             item.sentiment === 'NEGATIVE' ? '❌' : '⚪';
+                
+                return `
+                    <div class="analysis-item ${sentimentClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>${emoji} ${item.sentiment}</strong>
+                            <span style="font-size: 0.9em; color: #666;">
+                                ${(item.confidence * 100).toFixed(1)}% confidence
+                            </span>
+                        </div>
+                        <p style="margin: 8px 0; font-size: 0.95em;">${item.text}</p>
+                        <small style="color: #999;">${new Date(item.timestamp).toLocaleTimeString()}</small>
+                    </div>
+                `;
+            }).join('');
+
+            listElement.innerHTML = items;
+        }
+
+        // Auto-refresh dashboard every 3 seconds
+        function startAutoRefresh() {
+            updateDashboard(); // Initial load
+            setInterval(updateDashboard, 3000); // Refresh every 3 seconds
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            startAutoRefresh();
+        });
+    </script>
+</body>
+</html>
